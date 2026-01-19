@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>整蛊小程序</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        
+        .links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .link-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-decoration: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .link-card:active {
+            transform: translateY(0);
+        }
+        
+        .link-card h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .link-card p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+        
+        .pig-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .popup-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .emoji {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 整蛊小程序</h1>
+        <p class="subtitle">选择一个整蛊方式发给朋友~</p>
+        
+        <div class="links">
+            <a href="pig.html" class="link-card pig-card">
+                <span class="emoji">🐷</span>
+                <h2>画猪游戏</h2>
+                <p>一个个点自动画出小猪佩奇，最后显示"迎接猪少"并发出猪叫声！关不掉哦~</p>
+            </a>
+            
+            <a href="popup.html" class="link-card popup-card">
+                <span class="emoji">💣</span>
+                <h2>疯狂弹窗</h2>
+                <p>不断弹出"你是傻子"的窗口，关一个弹两个，越关越多！最多20个窗口，全关完才能结束。</p>
+            </a>
+        </div>
+        
+        <div class="footer">
+            😈 玩得开心，别玩过火哦！
+        </div>
+    </div>
+</body>
+</html>

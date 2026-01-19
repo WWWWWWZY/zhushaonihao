@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>🐷</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe0f0 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            touch-action: none;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #message {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff69b4;
+            text-shadow: 3px 3px 6px rgba(255, 105, 180, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        
+        #message.show {
+            animation: fadeInScale 1.5s ease-out forwards;
+        }
+        
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        .hint {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff69b4;
+            font-size: 20px;
+            opacity: 0.8;
+            animation: pulse 2s ease-in-out infinite;
+            z-index: 5;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        #closeBtn {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #ff69b4, #ff1493);
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 20;
+            transition: all 0.3s ease;
+        }
+        
+        #closeBtn.show {
+            animation: fadeInBounce 1s ease-out forwards;
+            animation-delay: 1s;
+            pointer-events: auto;
+        }
+        
+        @keyframes fadeInBounce {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            60% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(-10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        
+        #closeBtn:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+        
+        .warning-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 105, 180, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .warning-content {
+            text-align: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 30px;
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="hint" id="hint">🐷 正在绘制中...</div>
+    <canvas id="canvas"></canvas>
+    <div id="message"></div>
+    <button id="closeBtn">关闭</button>
+    <div class="warning-overlay" id="warningOverlay">
+        <div class="warning-content">
+            <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
+            <div>还没画完呢！</div>
+            <div style="font-size: 18px; margin-top: 15px; opacity: 0.9;">请耐心等待...</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const message = document.getElementById('message');
+        const hint = document.getElementById('hint');
+        const closeBtn = document.getElementById('closeBtn');
+        const warningOverlay = document.getElementById('warningOverlay');
+        
+        let isFinished = false;
+        let audioContext = null;
+        
+        // 设置画布大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        
+        // 小猪佩奇风格的点坐标（侧面轮廓）
+        const pigDots = [
+            // 鼻子（最突出的部分）
+            {x: 0.30, y: 0.45}, {x: 0.28, y: 0.47}, {x: 0.28, y: 0.49},
+            {x: 0.30, y: 0.51}, {x: 0.32, y: 0.50}, {x: 0.32, y: 0.48},
+            
+            // 鼻孔
+            {x: 0.29, y: 0.48}, {x: 0.29, y: 0.50},
+            
+            // 脸部轮廓（从鼻子到额头）
+            {x: 0.33, y: 0.46}, {x: 0.35, y: 0.44}, {x: 0.37, y: 0.42},
+            {x: 0.40, y: 0.40}, {x: 0.43, y: 0.38}, {x: 0.46, y: 0.37},
+            {x: 0.49, y: 0.36}, {x: 0.52, y: 0.36},
+            
+            // 头顶
+            {x: 0.55, y: 0.37}, {x: 0.58, y: 0.38}, {x: 0.60, y: 0.40},
+            
+            // 耳朵（向上翘）
+            {x: 0.62, y: 0.38}, {x: 0.63, y: 0.35}, {x: 0.64, y: 0.33},
+            {x: 0.65, y: 0.32}, {x: 0.66, y: 0.33}, {x: 0.66, y: 0.35},
+            {x: 0.65, y: 0.37}, {x: 0.63, y: 0.39},
+            
+            // 后脑勺到后背
+            {x: 0.62, y: 0.42}, {x: 0.62, y: 0.45}, {x: 0.62, y: 0.48},
+            {x: 0.62, y: 0.51}, {x: 0.62, y: 0.54},
+            
+            // 背部到尾巴
+            {x: 0.63, y: 0.56}, {x: 0.64, y: 0.58}, {x: 0.66, y: 0.59},
+            
+            // 卷卷的尾巴
+            {x: 0.68, y: 0.59}, {x: 0.69, y: 0.57}, {x: 0.70, y: 0.56},
+            {x: 0.70, y: 0.58}, {x: 0.69, y: 0.60},
+            
+            // 臀部
+            {x: 0.67, y: 0.61}, {x: 0.65, y: 0.62}, {x: 0.63, y: 0.63},
+            
+            // 后腿
+            {x: 0.61, y: 0.64}, {x: 0.60, y: 0.66}, {x: 0.59, y: 0.68},
+            {x: 0.58, y: 0.70}, {x: 0.58, y: 0.72},
+            
+            // 后脚
+            {x: 0.56, y: 0.73}, {x: 0.54, y: 0.73}, {x: 0.52, y: 0.73},
+            
+            // 肚子
+            {x: 0.50, y: 0.72}, {x: 0.48, y: 0.71}, {x: 0.46, y: 0.70},
+            {x: 0.44, y: 0.68}, {x: 0.42, y: 0.66},
+            
+            // 前腿
+            {x: 0.41, y: 0.64}, {x: 0.40, y: 0.66}, {x: 0.39, y: 0.68},
+            {x: 0.38, y: 0.70}, {x: 0.38, y: 0.72},
+            
+            // 前脚
+            {x: 0.36, y: 0.73}, {x: 0.34, y: 0.73}, {x: 0.32, y: 0.73},
+            
+            // 前胸到下巴
+            {x: 0.36, y: 0.64}, {x: 0.35, y: 0.62}, {x: 0.34, y: 0.60},
+            {x: 0.33, y: 0.58}, {x: 0.32, y: 0.56}, {x: 0.31, y: 0.54},
+            {x: 0.31, y: 0.52},
+            
+            // 眼睛
+            {x: 0.44, y: 0.43}, {x: 0.45, y: 0.43},
+            
+            // 微笑的嘴巴
+            {x: 0.35, y: 0.52}, {x: 0.37, y: 0.53}, {x: 0.39, y: 0.53},
+            {x: 0.41, y: 0.52}
+        ];
+        
+        let currentDot = 0;
+        let dots = [];
+        
+        // 转换相对坐标为实际坐标
+        function getActualPosition(relativePos) {
+            return {
+                x: relativePos.x * canvas.width,
+                y: relativePos.y * canvas.height
+            };
+        }
+        
+        // 绘制点
+        function drawDot(x, y, isNew = false) {
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = isNew ? '#ff1493' : '#ff69b4';
+            ctx.fill();
+            
+            // 添加光晕效果
+            if (isNew) {
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 105, 180, 0.3)';
+                ctx.fill();
+            }
+        }
+        
+        // 重绘所有点
+        function redrawAll() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            dots.forEach(dot => drawDot(dot.x, dot.y, false));
+        }
+        
+        // 使用Web Audio API生成猪叫声
+        function playPigSound() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 创建猪叫声（使用震荡器模拟）
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // 猪叫声特征：频率变化 + 颤音
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(350, audioContext.currentTime + 0.15);
+                oscillator.frequency.exponentialRampToValueAtTime(280, audioContext.currentTime + 0.3);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.5);
+                
+                // 音量包络
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+                gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.3);
+                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                // 添加第二个音调
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    
+                    osc2.type = 'sawtooth';
+                    osc2.frequency.setValueAtTime(250, audioContext.currentTime);
+                    osc2.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+                    osc2.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.25);
+                    
+                    gain2.gain.setValueAtTime(0, audioContext.currentTime);
+                    gain2.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.03);
+                    gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.25);
+                    
+                    osc2.start(audioContext.currentTime);
+                    osc2.stop(audioContext.currentTime + 0.3);
+                }, 200);
+            } catch (e) {
+                console.log('Audio playback not supported');
+            }
+        }
+        
+        // 自动添加下一个点
+        function addNextDot() {
+            if (currentDot >= pigDots.length) {
+                finishDrawing();
+                return;
+            }
+            
+            const pos = getActualPosition(pigDots[currentDot]);
+            dots.push(pos);
+            
+            redrawAll();
+            drawDot(pos.x, pos.y, true);
+            
+            currentDot++;
+            
+            // 每隔100ms添加下一个点
+            setTimeout(addNextDot, 100);
+        }
+        
+        // 完成绘制
+        function finishDrawing() {
+            isFinished = true;
+            
+            setTimeout(() => {
+                hint.style.display = 'none';
+                message.textContent = '迎接猪少';
+                message.classList.add('show');
+                closeBtn.classList.add('show');
+                
+                // 播放猪叫声
+                playPigSound();
+                
+                // 添加一些装饰
+                setTimeout(() => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    dots.forEach(dot => {
+                        ctx.beginPath();
+                        ctx.arc(dot.x, dot.y, 8, 0, Math.PI * 2);
+                        const gradient = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, 8);
+                        gradient.addColorStop(0, '#ff1493');
+                        gradient.addColorStop(1, '#ff69b4');
+                        ctx.fillStyle = gradient;
+                        ctx.fill();
+                    });
+                }, 500);
+            }, 300);
+        }
+        
+        // 防止页面退出的机制
+        function preventExit(e) {
+            if (!isFinished) {
+                e.preventDefault();
+                e.returnValue = '';
+                showWarning();
+                return '';
+            }
+        }
+        
+        // 显示警告
+        function showWarning() {
+            warningOverlay.style.display = 'flex';
+            setTimeout(() => {
+                warningOverlay.style.display = 'none';
+            }, 2000);
+        }
+        
+        // 阻止返回手势和其他退出行为
+        window.addEventListener('beforeunload', preventExit);
+        
+        // 阻止微信侧滑返回（监听touchmove）
+        let startX = 0;
+        let startY = 0;
+        document.addEventListener('touchstart', (e) => {
+            if (!isFinished) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isFinished) {
+                const currentX = e.touches[0].clientX;
+                const deltaX = currentX - startX;
+                const deltaY = Math.abs(e.touches[0].clientY - startY);
+                
+                // 如果是从左边缘向右滑动且垂直移动不大（返回手势）
+                if (startX < 50 && deltaX > 50 && deltaY < 50) {
+                    e.preventDefault();
+                    showWarning();
+                }
+            }
+        }, { passive: false });
+        
+        // 阻止所有可能的退出操作
+        document.addEventListener('visibilitychange', () => {
+            if (!isFinished && document.hidden) {
+                // 页面被隐藏时的处理
+            }
+        });
+        
+        // 关闭按钮
+        closeBtn.addEventListener('click', () => {
+            if (isFinished) {
+                // 微信内置浏览器中，尝试关闭当前页面
+                if (typeof WeixinJSBridge !== 'undefined') {
+                    WeixinJSBridge.call('closeWindow');
+                } else {
+                    window.close();
+                    // 如果无法关闭，跳转到空白页
+                    setTimeout(() => {
+                        window.location.href = 'about:blank';
+                    }, 100);
+                }
+            }
+        });
+        
+        // 响应式调整
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            
+            // 重新计算所有点的位置
+            dots = [];
+            for (let i = 0; i < currentDot; i++) {
+                dots.push(getActualPosition(pigDots[i]));
+            }
+            redrawAll();
+        });
+        
+        // 页面加载后延迟500ms开始自动绘制
+        setTimeout(() => {
+            addNextDot();
+        }, 500);
+    </script>
+</body>
+</html>
