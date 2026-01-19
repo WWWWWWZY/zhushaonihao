@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>🎁</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+        }
+        
+        /* 画猪阶段 */
+        #pigStage {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffe0f0 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        #pigStage.hidden {
+            display: none;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #pigMessage {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff69b4;
+            text-shadow: 3px 3px 6px rgba(255, 105, 180, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        
+        #pigMessage.show {
+            animation: fadeInScale 1.5s ease-out forwards;
+        }
+        
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        .pig-hint {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff69b4;
+            font-size: 20px;
+            opacity: 0.8;
+            animation: pulse 2s ease-in-out infinite;
+            z-index: 5;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        
+        /* 弹窗阶段 */
+        #popupStage {
+            width: 100%;
+            height: 100%;
+            background: #f0f0f0;
+            display: none;
+            position: relative;
+        }
+        
+        #popupStage.active {
+            display: block;
+        }
+        
+        .popup {
+            position: absolute;
+            width: 280px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            z-index: 1000;
+            animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5) rotate(-5deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        .popup-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .popup-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            font-size: 20px;
+        }
+        
+        .popup-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .popup-close {
+            margin-left: auto;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: #eee;
+            border-radius: 50%;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        
+        .popup-close:active {
+            background: #ddd;
+        }
+        
+        .popup-content {
+            background: #00C853;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .popup-button {
+            width: 100%;
+            padding: 12px;
+            background: #00C853;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .popup-button:active {
+            background: #00A844;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-10px) rotate(-5deg); }
+            75% { transform: translateX(10px) rotate(5deg); }
+        }
+        
+        .counter {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .counter.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- 画猪阶段 -->
+    <div id="pigStage">
+        <div class="pig-hint" id="pigHint">🐷 正在绘制中...</div>
+        <canvas id="canvas"></canvas>
+        <div id="pigMessage"></div>
+    </div>
+
+    <!-- 弹窗阶段 -->
+    <div id="popupStage">
+        <div class="counter" id="counter">窗口数: 0</div>
+    </div>
+
+    <script>
+        // ==================== 画猪阶段 ====================
+        const pigStage = document.getElementById('pigStage');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const pigMessage = document.getElementById('pigMessage');
+        const pigHint = document.getElementById('pigHint');
+        
+        let audioContext = null;
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        
+        // 可爱卡通猪的点坐标（正面）
+        const pigDots = [
+            // 头部轮廓（圆圆的）
+            {x: 0.35, y: 0.35}, {x: 0.38, y: 0.33}, {x: 0.41, y: 0.32},
+            {x: 0.44, y: 0.31}, {x: 0.47, y: 0.31}, {x: 0.50, y: 0.31},
+            {x: 0.53, y: 0.31}, {x: 0.56, y: 0.32}, {x: 0.59, y: 0.33},
+            {x: 0.62, y: 0.35}, {x: 0.64, y: 0.37}, {x: 0.66, y: 0.40},
+            {x: 0.67, y: 0.43}, {x: 0.67, y: 0.46}, {x: 0.66, y: 0.49},
+            {x: 0.65, y: 0.52},
+            
+            // 左耳
+            {x: 0.37, y: 0.30}, {x: 0.36, y: 0.28}, {x: 0.35, y: 0.26},
+            {x: 0.36, y: 0.24}, {x: 0.38, y: 0.24}, {x: 0.39, y: 0.26},
+            {x: 0.39, y: 0.28},
+            
+            // 右耳
+            {x: 0.60, y: 0.30}, {x: 0.61, y: 0.28}, {x: 0.62, y: 0.26},
+            {x: 0.61, y: 0.24}, {x: 0.59, y: 0.24}, {x: 0.58, y: 0.26},
+            {x: 0.58, y: 0.28},
+            
+            // 鼻子（大大的椭圆形）
+            {x: 0.42, y: 0.43}, {x: 0.44, y: 0.42}, {x: 0.47, y: 0.42},
+            {x: 0.50, y: 0.42}, {x: 0.53, y: 0.42}, {x: 0.55, y: 0.43},
+            {x: 0.56, y: 0.45}, {x: 0.56, y: 0.47}, {x: 0.55, y: 0.49},
+            {x: 0.53, y: 0.50}, {x: 0.50, y: 0.50}, {x: 0.47, y: 0.50},
+            {x: 0.44, y: 0.50}, {x: 0.42, y: 0.49}, {x: 0.41, y: 0.47},
+            {x: 0.41, y: 0.45},
+            
+            // 鼻孔
+            {x: 0.46, y: 0.46}, {x: 0.52, y: 0.46},
+            
+            // 左眼
+            {x: 0.42, y: 0.37}, {x: 0.43, y: 0.37}, {x: 0.43, y: 0.38},
+            
+            // 右眼
+            {x: 0.54, y: 0.37}, {x: 0.55, y: 0.37}, {x: 0.55, y: 0.38},
+            
+            // 身体轮廓（圆胖胖的）
+            {x: 0.33, y: 0.53}, {x: 0.32, y: 0.56}, {x: 0.31, y: 0.59},
+            {x: 0.31, y: 0.62}, {x: 0.32, y: 0.65}, {x: 0.34, y: 0.68},
+            {x: 0.37, y: 0.70}, {x: 0.40, y: 0.71},
+            
+            {x: 0.64, y: 0.53}, {x: 0.65, y: 0.56}, {x: 0.66, y: 0.59},
+            {x: 0.66, y: 0.62}, {x: 0.65, y: 0.65}, {x: 0.63, y: 0.68},
+            {x: 0.60, y: 0.70}, {x: 0.57, y: 0.71},
+            
+            // 底部
+            {x: 0.43, y: 0.72}, {x: 0.47, y: 0.72}, {x: 0.50, y: 0.72},
+            {x: 0.53, y: 0.72},
+            
+            // 左前腿
+            {x: 0.38, y: 0.72}, {x: 0.38, y: 0.74}, {x: 0.38, y: 0.76},
+            {x: 0.37, y: 0.77}, {x: 0.39, y: 0.77}, {x: 0.40, y: 0.77},
+            
+            // 左后腿
+            {x: 0.35, y: 0.70}, {x: 0.34, y: 0.72}, {x: 0.33, y: 0.74},
+            {x: 0.33, y: 0.76}, {x: 0.32, y: 0.77}, {x: 0.34, y: 0.77},
+            {x: 0.35, y: 0.77},
+            
+            // 右前腿
+            {x: 0.59, y: 0.72}, {x: 0.59, y: 0.74}, {x: 0.59, y: 0.76},
+            {x: 0.60, y: 0.77}, {x: 0.58, y: 0.77}, {x: 0.57, y: 0.77},
+            
+            // 右后腿
+            {x: 0.62, y: 0.70}, {x: 0.63, y: 0.72}, {x: 0.64, y: 0.74},
+            {x: 0.64, y: 0.76}, {x: 0.65, y: 0.77}, {x: 0.63, y: 0.77},
+            {x: 0.62, y: 0.77},
+            
+            // 尾巴（卷卷的）
+            {x: 0.67, y: 0.58}, {x: 0.69, y: 0.57}, {x: 0.70, y: 0.55},
+            {x: 0.71, y: 0.54}, {x: 0.70, y: 0.56}, {x: 0.69, y: 0.58}
+        ];
+        
+        let currentDot = 0;
+        let dots = [];
+        
+        function getActualPosition(relativePos) {
+            return {
+                x: relativePos.x * canvas.width,
+                y: relativePos.y * canvas.height
+            };
+        }
+        
+        function drawDot(x, y, isNew = false) {
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = isNew ? '#ff1493' : '#ff69b4';
+            ctx.fill();
+            
+            if (isNew) {
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 105, 180, 0.3)';
+                ctx.fill();
+            }
+        }
+        
+        function redrawAll() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            dots.forEach(dot => drawDot(dot.x, dot.y, false));
+        }
+        
+        function playPigSound() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sawtooth';
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(350, audioContext.currentTime + 0.15);
+                oscillator.frequency.exponentialRampToValueAtTime(280, audioContext.currentTime + 0.3);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.5);
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+                gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.3);
+                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    
+                    osc2.type = 'sawtooth';
+                    osc2.frequency.setValueAtTime(250, audioContext.currentTime);
+                    osc2.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+                    osc2.frequency.exponentialRampToValueAtTime(300, audioContext.currentTime + 0.25);
+                    
+                    gain2.gain.setValueAtTime(0, audioContext.currentTime);
+                    gain2.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.03);
+                    gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.25);
+                    
+                    osc2.start(audioContext.currentTime);
+                    osc2.stop(audioContext.currentTime + 0.3);
+                }, 200);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+        
+        function addNextDot() {
+            if (currentDot >= pigDots.length) {
+                finishPigDrawing();
+                return;
+            }
+            
+            const pos = getActualPosition(pigDots[currentDot]);
+            dots.push(pos);
+            
+            redrawAll();
+            drawDot(pos.x, pos.y, true);
+            
+            currentDot++;
+            setTimeout(addNextDot, 100);
+        }
+        
+        function finishPigDrawing() {
+            setTimeout(() => {
+                pigHint.style.display = 'none';
+                pigMessage.textContent = '迎接猪少';
+                pigMessage.classList.add('show');
+                
+                playPigSound();
+                
+                setTimeout(() => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    dots.forEach(dot => {
+                        ctx.beginPath();
+                        ctx.arc(dot.x, dot.y, 8, 0, Math.PI * 2);
+                        const gradient = ctx.createRadialGradient(dot.x, dot.y, 0, dot.x, dot.y, 8);
+                        gradient.addColorStop(0, '#ff1493');
+                        gradient.addColorStop(1, '#ff69b4');
+                        ctx.fillStyle = gradient;
+                        ctx.fill();
+                    });
+                }, 500);
+                
+                // 2秒后切换到弹窗阶段
+                setTimeout(() => {
+                    startPopupStage();
+                }, 2000);
+            }, 300);
+        }
+        
+        // ==================== 弹窗阶段 ====================
+        const popupStage = document.getElementById('popupStage');
+        const counter = document.getElementById('counter');
+        
+        let popupCount = 0;
+        let popupInterval;
+        let endTime;
+        const messages = ['你是傻子', '你真的是傻子', '你就是个傻子', '傻子你好', '傻傻的你'];
+        const openingMessages = ['猪少少打飞机', '猪少少约人', '猪少忍忍', '猪少真爱马上降临'];
+        let openingIndex = 0;
+        let isOpeningPhase = true;
+        
+        function startPopupStage() {
+            pigStage.classList.add('hidden');
+            popupStage.classList.add('active');
+            counter.classList.add('show');
+            
+            // 先显示开场白弹窗
+            showOpeningPopup();
+        }
+        
+        function showOpeningPopup() {
+            if (openingIndex < openingMessages.length) {
+                createPopup(openingMessages[openingIndex]);
+                openingIndex++;
+                
+                // 每个开场白间隔1秒
+                setTimeout(showOpeningPopup, 1000);
+            } else {
+                // 开场白结束，开始正式弹窗
+                isOpeningPhase = false;
+                startMainPopups();
+            }
+        }
+        
+        function startMainPopups() {
+            // 设置20秒结束时间
+            endTime = Date.now() + 20000;
+            
+            // 立即弹出第一个
+            createPopup();
+            
+            // 每0.5秒随机弹出1-2个
+            popupInterval = setInterval(() => {
+                if (Date.now() >= endTime) {
+                    clearInterval(popupInterval);
+                    return;
+                }
+                
+                const count = Math.random() < 0.5 ? 1 : 2;
+                for (let i = 0; i < count; i++) {
+                    createPopup();
+                }
+            }, 500);
+        }
+        
+        function createPopup(customMessage = null) {
+            const popup = document.createElement('div');
+            popup.className = 'popup';
+            
+            const maxX = window.innerWidth - 300;
+            const maxY = window.innerHeight - 250;
+            const x = Math.random() * Math.max(20, maxX);
+            const y = Math.random() * Math.max(20, maxY);
+            
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            
+            const rotation = (Math.random() - 0.5) * 10;
+            popup.style.transform = `rotate(${rotation}deg)`;
+            
+            const message = customMessage || messages[Math.floor(Math.random() * messages.length)];
+            
+            // 如果是开场白阶段，不显示关闭按钮
+            const closeButton = isOpeningPhase ? '' : '<button class="popup-close" onclick="closePopup(this)">✕</button>';
+            const confirmButton = isOpeningPhase ? '' : '<button class="popup-button" onclick="tryClose(this)">确定</button>';
+            
+            popup.innerHTML = `
+                <div class="popup-header">
+                    <span class="popup-icon">⚠️</span>
+                    <span class="popup-title">系统提示</span>
+                    ${closeButton}
+                </div>
+                <div class="popup-content">${message}</div>
+                ${confirmButton}
+            `;
+            
+            popupStage.appendChild(popup);
+            popupCount++;
+            updateCounter();
+            
+            popup.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+            });
+            
+            // 如果是开场白，2秒后自动消失
+            if (isOpeningPhase) {
+                setTimeout(() => {
+                    popup.remove();
+                    popupCount--;
+                    updateCounter();
+                }, 2000);
+            }
+        }
+        
+        function closePopup(btn) {
+            const popup = btn.closest('.popup');
+            popup.style.animation = 'shake 0.3s ease-in-out';
+            
+            setTimeout(() => {
+                popup.remove();
+                popupCount--;
+                updateCounter();
+                
+                // 弹出2-5个新的
+                const count = Math.floor(Math.random() * 4) + 2; // 2-5个
+                for (let i = 0; i < count; i++) {
+                    createPopup();
+                }
+            }, 300);
+        }
+        
+        function tryClose(btn) {
+            const popup = btn.closest('.popup');
+            popup.style.animation = 'shake 0.3s ease-in-out';
+            
+            setTimeout(() => {
+                popup.remove();
+                popupCount--;
+                updateCounter();
+                
+                // 弹出1个新的
+                createPopup();
+            }, 300);
+        }
+        
+        function updateCounter() {
+            counter.textContent = `窗口数: ${popupCount}`;
+        }
+        
+        // 防止退出
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        });
+        
+        // 阻止微信侧滑返回
+        let startX = 0;
+        document.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', (e) => {
+            const currentX = e.touches[0].clientX;
+            if (startX < 50 && currentX > startX + 50) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // 响应式调整
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            dots = [];
+            for (let i = 0; i < currentDot; i++) {
+                dots.push(getActualPosition(pigDots[i]));
+            }
+            redrawAll();
+        });
+        
+        // 页面加载后开始
+        setTimeout(() => {
+            addNextDot();
+        }, 500);
+    </script>
+</body>
+</html>
